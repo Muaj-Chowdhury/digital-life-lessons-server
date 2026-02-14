@@ -29,7 +29,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "digital-life-lessons-562ea.web.app"
+      "https://digital-life-lessons-562ea.web.app"
     ],
     credentials: true
   })
