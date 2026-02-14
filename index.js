@@ -45,7 +45,7 @@ app.post(
       event = stripe.webhooks.constructEvent(
         req.body, // Must be the raw Buffer from express.raw
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET
+        process.env.STRIPE_WEBHOOK_SECRET,
       );
       console.log("✅ Webhook Verified: ", event.type);
     } catch (err) {
@@ -66,16 +66,15 @@ app.post(
               isPremium: true,
               premiumActivatedAt: new Date(),
             },
-          }
+          },
         );
       }
     }
 
     // Return a 200 response to acknowledge receipt
     res.json({ received: true });
-  }
+  },
 );
-
 
 app.use(express.json());
 
@@ -108,7 +107,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Send a ping to confirm a successful connection
-   
+
     const db = client.db("digitalLifeLessons");
     usersCollection = db.collection("users");
     lessonsCollection = db.collection("lessons");
@@ -116,25 +115,92 @@ async function run() {
     commentsCollection = db.collection("comments");
     reportsCollection = db.collection("reports");
 
-    // 3. Setup Database Indexes (Inside run)
+    // 3 Setup Database Indexes (Inside run)
     const setupDatabase = async () => {
       try {
+        /* ---------------- USERS ---------------- */
+        await usersCollection.createIndex(
+          { email: 1 },
+          { unique: true, name: "unique_user_email" },
+        );
+
+        // Dashboard growth chart
+        await usersCollection.createIndex(
+          { createdAt: 1 },
+          { name: "users_createdAt_index" },
+        );
+
+        /* ---------------- LESSONS ---------------- */
+
+        // Fetch by author (profile/dashboard queries)
+        await lessonsCollection.createIndex(
+          { authorEmail: 1 },
+          { name: "lesson_author_index" },
+        );
+
+        // Growth chart queries
+        await lessonsCollection.createIndex(
+          { createdAt: 1 },
+          { name: "lesson_createdAt_index" },
+        );
+
+        // Admin review + moderation queries
+        await lessonsCollection.createIndex(
+          { isReviewed: 1, isDeleted: 1 },
+          { name: "lesson_review_status_index" },
+        );
+
+        // Reports filtering
+        await lessonsCollection.createIndex(
+          { reportCount: -1 },
+          { name: "lesson_report_sort_index" },
+        );
+
+        // Soft-delete optimized queries (partial index)
+        await lessonsCollection.createIndex(
+          { isDeleted: 1, deletedAt: 1 },
+          {
+            partialFilterExpression: { isDeleted: true },
+            name: "lesson_deleted_partial_index",
+          },
+        );
+
+        /* ---------------- FAVORITES ---------------- */
+
+        // Prevent duplicate favorites
         await favoriteCollection.createIndex(
           { userEmail: 1, lessonId: 1 },
-          { unique: true },
+          { unique: true, name: "unique_user_favorite" },
         );
-        await commentsCollection.createIndex({ lessonId: 1 });
-        await reportsCollection.createIndex({ lessonId: 1 });
-        await usersCollection.createIndex({ email: 1 }, { unique: true });
-        // await db.users.createIndex({ createdAt: 1 });
-        // await db.lessons.createIndex({ createdAt: 1 });
-        // await db.lessons.createIndex({ authorEmail: 1 });
-        // await db.lessons.createIndex({ reportCount: 1 });
 
-        console.log("🚀 Database Indexes Initialized");
+        // Most saved lessons ranking
+        await favoriteCollection.createIndex(
+          { lessonId: 1 },
+          { name: "favorite_lesson_lookup" },
+        );
+
+        /* ---------------- COMMENTS ---------------- */
+
+        await commentsCollection.createIndex(
+          { lessonId: 1, createdAt: -1 },
+          { name: "comments_lesson_sort_index" },
+        );
+
+        /* ---------------- REPORTS ---------------- */
+
+        await reportsCollection.createIndex(
+          { lessonId: 1 },
+          { name: "reports_lesson_lookup" },
+        );
+
+        await reportsCollection.createIndex(
+          { status: 1 },
+          { name: "reports_status_index" },
+        );
+
+        console.log(" Database indexes initialized successfully");
       } catch (err) {
-        // If duplicates already exist, unique index creation might fail
-        console.error("Index creation warning:", err.message);
+        console.error(" Index creation warning:", err.message);
       }
     };
 
