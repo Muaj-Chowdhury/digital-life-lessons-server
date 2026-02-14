@@ -27,11 +27,14 @@ const app = express();
 // middleware
 app.use(
   cors({
-    origin: true,
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
+    origin: [
+      "http://localhost:5173",
+      "digital-life-lessons-562ea.web.app"
+    ],
+    credentials: true
+  })
 );
+
 
 // 2. WEBHOOK MUST BE HERE (Before express.json())
 app.post(
