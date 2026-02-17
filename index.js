@@ -35,11 +35,6 @@ app.use(
   })
 );
 
-// app.use(cors({
-//   origin: 'http://localhost:5173', // Be specific, no wildcards (*)
-//   credentials: true,               // Allow cookies/headers
-//   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-// }));
 
 // 2. WEBHOOK MUST BE HERE (Before express.json())
 app.post(
@@ -47,41 +42,42 @@ app.post(
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const sig = req.headers["stripe-signature"];
-    let event; // Moved outside the try block
+    
+    // DEBUG LOGS
+    console.log("--- Webhook Attempt ---");
+    console.log("Signature present:", !!sig);
+    console.log("Webhook Secret present:", !!process.env.STRIPE_WEBHOOK_SECRET);
+
+    let event;
 
     try {
       event = stripe.webhooks.constructEvent(
-        req.body, // Must be the raw Buffer from express.raw
+        req.body, 
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET,
+        process.env.STRIPE_WEBHOOK_SECRET
       );
-      console.log("✅ Webhook Verified: ", event.type);
     } catch (err) {
-      console.error("❌ Webhook Error:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`); // Stops execution on fail
+      console.error("❌ Verification Failed:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // Handle specific event types
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       const userEmail = session.metadata?.userEmail;
+      
+      console.log("✅ Payment Success for Email:", userEmail);
 
       if (userEmail) {
-        await usersCollection.updateOne(
+        const result = await usersCollection.updateOne(
           { email: userEmail },
-          {
-            $set: {
-              isPremium: true,
-              premiumActivatedAt: new Date(),
-            },
-          },
+          { $set: { isPremium: true, premiumActivatedAt: new Date() } }
         );
+        console.log("DB Update Result:", result.modifiedCount > 0 ? "Success" : "No user found/Already premium");
       }
     }
 
-    // Return a 200 response to acknowledge receipt
     res.json({ received: true });
-  },
+  }
 );
 
 app.use(express.json());
