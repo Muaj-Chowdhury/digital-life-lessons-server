@@ -25,16 +25,21 @@ let reportsCollection;
 
 const app = express();
 // middleware
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://digital-life-lessons-562ea.web.app"
-    ],
-    credentials: true
-  })
-);
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5173",
+//       "https://digital-life-lessons-562ea.web.app"
+//     ],
+//     credentials: true
+//   })
+// );
 
+app.use(cors({
+  origin: 'http://localhost:5173', // Be specific, no wildcards (*)
+  credentials: true,               // Allow cookies/headers
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+}));
 
 // 2. WEBHOOK MUST BE HERE (Before express.json())
 app.post(
@@ -646,7 +651,7 @@ async function run() {
     app.patch("/lessons/updateInfo/:id", verifyJWT, async (req, res) => {
       const lessonId = new ObjectId(req.params.id);
       const body = req.body;
-      console.log(body);
+      console.log("lesson update info", body);
       if (body === undefined || Object.keys(body).length === 0) {
         return res.send({ message: "No valid fields to update." });
       }
@@ -659,7 +664,7 @@ async function run() {
         "description",
         "category",
         "tone",
-        "Image",
+        "image",
       ];
 
       // 2. Build the doc (Cleanliness)
@@ -1370,6 +1375,7 @@ async function run() {
     // home page contents
     app.get("/home/overview", async (req, res) => {
       try {
+        console.log("home overview");
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - 7);
 
