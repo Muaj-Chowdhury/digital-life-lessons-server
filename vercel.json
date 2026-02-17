@@ -8,13 +8,9 @@
   ],
   "routes": [
     {
-      "src": "/webhook",
-      "dest": "index.js",
-      "config": { "rawBody": true }
-    },
-    {
       "src": "/(.*)",
-      "dest": "index.js"
+      "dest": "index.js",
+      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     }
   ]
 }
