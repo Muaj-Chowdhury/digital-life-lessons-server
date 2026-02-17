@@ -24,16 +24,6 @@ let commentsCollection;
 let reportsCollection;
 
 const app = express();
-// middleware
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://digital-life-lessons-562ea.web.app"
-    ],
-    credentials: true
-  })
-);
 
 
 // 2. WEBHOOK MUST BE HERE (Before express.json())
@@ -42,7 +32,7 @@ app.post(
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const sig = req.headers["stripe-signature"];
-    
+
     // DEBUG LOGS
     console.log("--- Webhook Attempt ---");
     console.log("Signature present:", !!sig);
@@ -52,32 +42,52 @@ app.post(
 
     try {
       event = stripe.webhooks.constructEvent(
-        req.body, 
+        req.body,
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET
+        process.env.STRIPE_WEBHOOK_SECRET,
       );
     } catch (err) {
       console.error("❌ Verification Failed:", err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+    // 2. Ensure DB is connected (Important for Vercel!)
+    if (!usersCollection) {
+      const db = client.db("digitalLifeLessons");
+      usersCollection = db.collection("users");
+    }
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       const userEmail = session.metadata?.userEmail;
-      
+
       console.log("✅ Payment Success for Email:", userEmail);
 
       if (userEmail) {
         const result = await usersCollection.updateOne(
           { email: userEmail },
-          { $set: { isPremium: true, premiumActivatedAt: new Date() } }
+          { $set: { isPremium: true, premiumActivatedAt: new Date() } },
         );
-        console.log("DB Update Result:", result.modifiedCount > 0 ? "Success" : "No user found/Already premium");
+        console.log(
+          "DB Update Result:",
+          result.modifiedCount > 0
+            ? "Success"
+            : "No user found/Already premium",
+        );
       }
     }
 
     res.json({ received: true });
-  }
+  },
+);
+// middleware
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://digital-life-lessons-562ea.web.app",
+    ],
+    credentials: true,
+  }),
 );
 
 app.use(express.json());
