@@ -25,21 +25,21 @@ let reportsCollection;
 
 const app = express();
 // middleware
-// app.use(
-//   cors({
-//     origin: [
-//       "http://localhost:5173",
-//       "https://digital-life-lessons-562ea.web.app"
-//     ],
-//     credentials: true
-//   })
-// );
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://digital-life-lessons-562ea.web.app"
+    ],
+    credentials: true
+  })
+);
 
-app.use(cors({
-  origin: 'http://localhost:5173', // Be specific, no wildcards (*)
-  credentials: true,               // Allow cookies/headers
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-}));
+// app.use(cors({
+//   origin: 'http://localhost:5173', // Be specific, no wildcards (*)
+//   credentials: true,               // Allow cookies/headers
+//   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+// }));
 
 // 2. WEBHOOK MUST BE HERE (Before express.json())
 app.post(
